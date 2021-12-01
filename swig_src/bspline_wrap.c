@@ -3417,6 +3417,16 @@ static swig_module_info swig_module = {swig_types, 8, 0, 0, 0, 0};
 
 #include <stddef.h>
 
+
+/* Require direct access to PyArray API */
+#include <numpy/arrayobject.h>
+
+#include <pygsl/block_helpers.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_bspline.h>
+#include <stdlib.h>
+#include <stdio.h>
+
    
 #include <stddef.h>
 #include <pygsl/utils.h>
@@ -3434,11 +3444,6 @@ PyObject *pygsl_module_for_error_treatment = NULL;
 #include <assert.h>
 
 
-#include <pygsl/block_helpers.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_bspline.h>
-#include <stdlib.h>
-#include <stdio.h>
 struct pygsl_bspline
 {
      gsl_matrix_view cov;
@@ -3710,7 +3715,7 @@ SWIGINTERN gsl_error_flag_drop pygsl_bspline_knots(struct pygsl_bspline *self,Py
        DEBUG_MESS(2, "sample_len = %ld", (long) sample_len);
        if(sample_len != self->w->nbreak){
 	    pygsl_error("Knots vector did not mach the number of break points!",
-			"src/bspline/bspline.i", 108 - 2, GSL_EBADLEN);
+			"src/bspline/bspline.i", 121 - 2, GSL_EBADLEN);
 	    return GSL_EBADLEN;
        }       
        flag =  gsl_bspline_knots(&(vec.vector), self->w);
@@ -3788,6 +3793,49 @@ SWIGINTERN PyObject *pygsl_bspline_eval(struct pygsl_bspline *self,double const 
        /* Failed */
        Py_XDECREF(B_a);
        return NULL;
+  }
+SWIGINTERN PyObject *pygsl_bspline_deriv_eval_vector(struct pygsl_bspline *self,gsl_vector const *IN,size_t nderiv){
+    PyArrayObject *B_M_a = NULL;
+    gsl_matrix_view B_v;
+    PyGSL_array_index_t n, sample_len, tmp[3], i=0, strides;
+    double x;
+    double * row_ptr;
+    int flag=GSL_EFAILED;
+
+    FUNC_MESS_BEGIN();
+    n = self->w->n;
+    sample_len = IN->size;
+    DEBUG_MESS(2, "sample_len = %ld", (long) sample_len);
+    tmp[0] = sample_len;
+    tmp[1] = n;
+    tmp[2] = nderiv+1;
+
+    B_M_a = (PyArrayObject *) PyArray_SimpleNew(3, tmp, NPY_DOUBLE);
+    if(B_M_a == NULL)
+      return NULL;
+
+    DEBUG_MESS(2, "B_M_a = %p, strides = (%ld, %ld, %ld) size = (%ld, %ld, %ld)",
+               (void *) B_M_a,
+               (long) PyArray_STRIDE(B_M_a, 0), (long) PyArray_STRIDE(B_M_a, 1), (long) PyArray_STRIDE(B_M_a, 2),
+               (long) PyArray_DIM(B_M_a, 0), (long)  PyArray_DIM(B_M_a, 1), (long)  PyArray_DIM(B_M_a, 2)
+               );
+
+    for(i = 0; i < sample_len; ++i){
+      row_ptr = (double *) PyArray_GETPTR3(B_M_a, i, 0, 0);
+      B_v = gsl_matrix_view_array(row_ptr, n, nderiv+1);
+      x = gsl_vector_get(IN, i);
+
+      flag = gsl_bspline_deriv_eval(x, nderiv, &(B_v.matrix), self->w);
+      if (PyGSL_ERROR_FLAG(flag) != GSL_SUCCESS)
+        goto fail;
+    }
+    FUNC_MESS_END();
+    return (PyObject *) B_M_a;
+
+  fail:
+    /* Failed */
+    Py_XDECREF(B_M_a);
+    return NULL;
   }
 SWIGINTERN PyObject *pygsl_bspline_deriv_eval(struct pygsl_bspline *self,double const X,size_t const nderiv){
     PyArrayObject *B_M_a = NULL;
@@ -4424,6 +4472,64 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_bspline_deriv_eval_vector(PyObject *self, PyObject *args, PyObject *kwargs) {
+  PyObject *resultobj = 0;
+  struct pygsl_bspline *arg1 = (struct pygsl_bspline *) 0 ;
+  gsl_vector *arg2 = (gsl_vector *) 0 ;
+  size_t arg3 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  size_t val3 ;
+  int ecode3 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  char * kwnames[] = {
+    (char *)"IN",  (char *)"nderiv",  NULL 
+  };
+  PyObject *result = 0 ;
+  
+  
+  PyArrayObject * volatile _PyVector2 = NULL;
+  TYPE_VIEW_gsl_vector _vector2;
+  
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:bspline_deriv_eval_vector", kwnames, &obj1, &obj2)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(self, &argp1,SWIGTYPE_p_pygsl_bspline, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "bspline_deriv_eval_vector" "', argument " "1"" of type '" "struct pygsl_bspline *""'"); 
+  }
+  arg1 = (struct pygsl_bspline *)(argp1);
+  
+  {
+    PyGSL_array_index_t stride=0;
+    if(PyGSL_VECTOR_CONVERT(obj1, arg2, _PyVector2, _vector2,
+        PyGSL_INPUT_ARRAY, gsl_vector, 2, &stride) != GSL_SUCCESS){
+      goto fail;
+    }
+  }
+  
+  ecode3 = SWIG_AsVal_size_t(obj2, &val3);
+  if (!SWIG_IsOK(ecode3)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "bspline_deriv_eval_vector" "', argument " "3"" of type '" "size_t""'");
+  } 
+  arg3 = (size_t)(val3);
+  result = (PyObject *)pygsl_bspline_deriv_eval_vector(arg1,(gsl_vector const *)arg2,arg3);
+  resultobj = result;
+  {
+    Py_XDECREF(_PyVector2);
+    _PyVector2 = NULL;
+    FUNC_MESS_END();
+  }
+  return resultobj;
+fail:
+  {
+    Py_XDECREF(_PyVector2);
+    _PyVector2 = NULL;
+    FUNC_MESS_END();
+  }
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_bspline_deriv_eval(PyObject *self, PyObject *args, PyObject *kwargs) {
   PyObject *resultobj = 0;
   struct pygsl_bspline *arg1 = (struct pygsl_bspline *) 0 ;
@@ -4825,6 +4931,7 @@ SWIGINTERN PyMethodDef SwigPyBuiltin__pygsl_bspline_methods[] = {
   { "knots_uniform", (PyCFunction)(void(*)(void))_wrap_bspline_knots_uniform, METH_VARARGS|METH_KEYWORDS, "knots_uniform(bspline self, double const a, double const b) -> gsl_error_flag_drop" },
   { "eval_vector", (PyCFunction)(void(*)(void))_wrap_bspline_eval_vector, METH_VARARGS|METH_KEYWORDS, "eval_vector(bspline self, gsl_vector const * IN) -> PyObject *" },
   { "eval", (PyCFunction)(void(*)(void))_wrap_bspline_eval, METH_VARARGS|METH_KEYWORDS, "eval(bspline self, double const X) -> PyObject *" },
+  { "deriv_eval_vector", (PyCFunction)(void(*)(void))_wrap_bspline_deriv_eval_vector, METH_VARARGS|METH_KEYWORDS, "deriv_eval_vector(bspline self, gsl_vector const * IN, size_t nderiv) -> PyObject *" },
   { "deriv_eval", (PyCFunction)(void(*)(void))_wrap_bspline_deriv_eval, METH_VARARGS|METH_KEYWORDS, "deriv_eval(bspline self, double const X, size_t const nderiv) -> PyObject *" },
   { "set_coefficients_and_covariance_matrix", (PyCFunction)(void(*)(void))_wrap_bspline_set_coefficients_and_covariance_matrix, METH_VARARGS|METH_KEYWORDS, "set_coefficients_and_covariance_matrix(bspline self, PyObject * coeffs_o, PyObject * cov_o) -> gsl_error_flag_drop" },
   { "eval_dep", (PyCFunction)(void(*)(void))_wrap_bspline_eval_dep, METH_VARARGS|METH_KEYWORDS, "eval_dep(bspline self, double const x, double * OUT) -> gsl_error_flag_drop" },
@@ -5794,6 +5901,10 @@ SWIG_init(void) {
   pygsl_module_for_error_treatment = m;
   
   
+  init_pygsl();
+  import_array();
+  
+  
   /* type '::pygsl_bspline' */
   builtin_pytype = (PyTypeObject *)&SwigPyBuiltin__pygsl_bspline_type;
   builtin_pytype->tp_dict = d = PyDict_New();
@@ -5816,9 +5927,6 @@ SWIG_init(void) {
   PyModule_AddObject(m, "bspline", (PyObject *)builtin_pytype);
   SwigPyBuiltin_AddPublicSymbol(public_interface, "bspline");
   d = md;
-  
-  init_pygsl();
-  
 #if PY_VERSION_HEX >= 0x03000000
   return m;
 #else
