@@ -192,6 +192,42 @@ struct pygsl_bspline
        return NULL;
   }
 
+
+  PyObject*  deriv_eval(const double X, const size_t nderiv){
+    PyArrayObject *B_M_a = NULL;
+    gsl_matrix_view B_v;
+    PyGSL_array_index_t n, sample_len, tmp[2], i=0, strides;
+    int flag=GSL_EFAILED;
+
+    FUNC_MESS_BEGIN();
+    n = self->w->n;
+    tmp[0] = n;
+    tmp[1] = nderiv+1;
+    B_M_a = PyGSL_New_Array(2, tmp, NPY_DOUBLE);
+    if(B_M_a == NULL)
+      return NULL;
+
+    DEBUG_MESS(2, "B_M_a = %p, strides = (%ld, %ld) size = (%ld, %ld)",
+               (void *) B_M_a,
+               (long) PyArray_STRIDE(B_M_a, 0), (long) PyArray_STRIDE(B_M_a, 1),
+               (long) PyArray_DIM(B_M_a, 0), (long)  PyArray_DIM(B_M_a, 1)
+               );
+
+    B_v = gsl_matrix_view_array((double *) PyArray_DATA(B_M_a), n, nderiv+1);
+    flag = gsl_bspline_deriv_eval(X, nderiv, &(B_v.matrix), self->w);
+    if (PyGSL_ERROR_FLAG(flag) != GSL_SUCCESS)
+      goto fail;
+
+    FUNC_MESS_END();
+    return (PyObject *) B_M_a;
+
+  fail:
+    /* Failed */
+    Py_XDECREF(B_M_a);
+    return NULL;
+  }
+
+
   gsl_error_flag_drop set_coefficients_and_covariance_matrix(PyObject * coeffs_o, 
 							     PyObject * cov_o)
     {
