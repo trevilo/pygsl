@@ -90,7 +90,7 @@ struct pygsl_bspline
        int flag = GSL_EINVAL;
        
        FUNC_MESS_BEGIN();
-       knots_a = PyGSL_vector_check(knots_o, self->w->knots->size, PyGSL_DARRAY_INPUT(1), &stride, NULL);
+       knots_a = PyGSL_vector_check(knots_o, self->w->nbreak, PyGSL_DARRAY_INPUT(1), &stride, NULL);
        if(knots_a == NULL){
 	    flag =  GSL_EINVAL;
 	    goto fail;
