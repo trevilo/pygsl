@@ -9,6 +9,7 @@
 
 %{
 /* Require direct access to PyArray API */
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
 #include <pygsl/block_helpers.h>
@@ -142,7 +143,7 @@ struct pygsl_bspline
   PyObject*  eval_vector(const gsl_vector *IN){
        PyArrayObject *B_M_a = NULL;
        gsl_vector_view B_v;
-       PyGSL_array_index_t n, sample_len, tmp[2], i=0, strides;
+       PyGSL_array_index_t n, sample_len, tmp[2], i=0;
        double x;
        char * row_ptr;
        int flag=GSL_EFAILED;
@@ -208,7 +209,7 @@ struct pygsl_bspline
   PyObject*  deriv_eval_vector(const gsl_vector *IN, size_t nderiv){
     PyArrayObject *B_M_a = NULL;
     gsl_matrix_view B_v;
-    PyGSL_array_index_t n, sample_len, tmp[3], i=0, strides;
+    PyGSL_array_index_t n, sample_len, tmp[3], i=0;
     double x;
     double * row_ptr;
     int flag=GSL_EFAILED;
@@ -253,7 +254,7 @@ struct pygsl_bspline
   PyObject*  deriv_eval(const double X, const size_t nderiv){
     PyArrayObject *B_M_a = NULL;
     gsl_matrix_view B_v;
-    PyGSL_array_index_t n, sample_len, tmp[2], i=0, strides;
+    PyGSL_array_index_t n, tmp[2];
     int flag=GSL_EFAILED;
 
     FUNC_MESS_BEGIN();
@@ -441,7 +442,7 @@ struct pygsl_bspline
   PyObject* greville_abscissa_vector(){
     PyGSL_array_index_t i;
     PyArrayObject *xg = NULL;
-    const size_t Ncoef = gsl_bspline_ncoeffs(self->w);
+    size_t Ncoef = gsl_bspline_ncoeffs(self->w);
     xg = PyGSL_New_Array(1, &Ncoef, NPY_DOUBLE);
     double * xg_d = (double *) PyArray_DATA(xg);
 

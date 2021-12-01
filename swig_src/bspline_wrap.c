@@ -3419,6 +3419,7 @@ static swig_module_info swig_module = {swig_types, 8, 0, 0, 0, 0};
 
 
 /* Require direct access to PyArray API */
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
 #include <pygsl/block_helpers.h>
@@ -3715,7 +3716,7 @@ SWIGINTERN gsl_error_flag_drop pygsl_bspline_knots(struct pygsl_bspline *self,Py
        DEBUG_MESS(2, "sample_len = %ld", (long) sample_len);
        if(sample_len != self->w->nbreak){
 	    pygsl_error("Knots vector did not mach the number of break points!",
-			"src/bspline/bspline.i", 121 - 2, GSL_EBADLEN);
+			"src/bspline/bspline.i", 122 - 2, GSL_EBADLEN);
 	    return GSL_EBADLEN;
        }       
        flag =  gsl_bspline_knots(&(vec.vector), self->w);
@@ -3733,7 +3734,7 @@ SWIGINTERN gsl_error_flag_drop pygsl_bspline_knots_uniform(struct pygsl_bspline 
 SWIGINTERN PyObject *pygsl_bspline_eval_vector(struct pygsl_bspline *self,gsl_vector const *IN){
        PyArrayObject *B_M_a = NULL;
        gsl_vector_view B_v;
-       PyGSL_array_index_t n, sample_len, tmp[2], i=0, strides;
+       PyGSL_array_index_t n, sample_len, tmp[2], i=0;
        double x;
        char * row_ptr;
        int flag=GSL_EFAILED;
@@ -3797,7 +3798,7 @@ SWIGINTERN PyObject *pygsl_bspline_eval(struct pygsl_bspline *self,double const 
 SWIGINTERN PyObject *pygsl_bspline_deriv_eval_vector(struct pygsl_bspline *self,gsl_vector const *IN,size_t nderiv){
     PyArrayObject *B_M_a = NULL;
     gsl_matrix_view B_v;
-    PyGSL_array_index_t n, sample_len, tmp[3], i=0, strides;
+    PyGSL_array_index_t n, sample_len, tmp[3], i=0;
     double x;
     double * row_ptr;
     int flag=GSL_EFAILED;
@@ -3840,7 +3841,7 @@ SWIGINTERN PyObject *pygsl_bspline_deriv_eval_vector(struct pygsl_bspline *self,
 SWIGINTERN PyObject *pygsl_bspline_deriv_eval(struct pygsl_bspline *self,double const X,size_t const nderiv){
     PyArrayObject *B_M_a = NULL;
     gsl_matrix_view B_v;
-    PyGSL_array_index_t n, sample_len, tmp[2], i=0, strides;
+    PyGSL_array_index_t n, tmp[2];
     int flag=GSL_EFAILED;
 
     FUNC_MESS_BEGIN();
@@ -4021,7 +4022,7 @@ SWIGINTERN double pygsl_bspline_greville_abscissa(struct pygsl_bspline *self,siz
 SWIGINTERN PyObject *pygsl_bspline_greville_abscissa_vector(struct pygsl_bspline *self){
     PyGSL_array_index_t i;
     PyArrayObject *xg = NULL;
-    const size_t Ncoef = gsl_bspline_ncoeffs(self->w);
+    size_t Ncoef = gsl_bspline_ncoeffs(self->w);
     xg = PyGSL_New_Array(1, &Ncoef, NPY_DOUBLE);
     double * xg_d = (double *) PyArray_DATA(xg);
 
