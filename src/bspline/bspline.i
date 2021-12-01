@@ -7,14 +7,29 @@
 %module bspline
 %feature("autodoc", "3");
 
-%include gsl_error_typemap.i
-%include gsl_block_typemaps.i
 %{
+/* Require direct access to PyArray API */
+#include <numpy/arrayobject.h>
+
 #include <pygsl/block_helpers.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_bspline.h>
 #include <stdlib.h>
 #include <stdio.h>
+%}
+
+%include gsl_error_typemap.i
+%include gsl_block_typemaps.i
+
+%rename(bspline) pygsl_bspline;
+%feature("autodoc");
+
+%init{
+     init_pygsl();
+     import_array();
+}
+
+%{
 struct pygsl_bspline
 {
      gsl_matrix_view cov;
@@ -29,8 +44,6 @@ struct pygsl_bspline
 #include "bspline.ic"
 %}
 
-%rename(bspline) pygsl_bspline;
-%feature("autodoc");
 
 struct pygsl_bspline
 {
@@ -190,6 +203,50 @@ struct pygsl_bspline
        /* Failed */
        Py_XDECREF(B_a);
        return NULL;
+  }
+
+  PyObject*  deriv_eval_vector(const gsl_vector *IN, size_t nderiv){
+    PyArrayObject *B_M_a = NULL;
+    gsl_matrix_view B_v;
+    PyGSL_array_index_t n, sample_len, tmp[3], i=0, strides;
+    double x;
+    double * row_ptr;
+    int flag=GSL_EFAILED;
+
+    FUNC_MESS_BEGIN();
+    n = self->w->n;
+    sample_len = IN->size;
+    DEBUG_MESS(2, "sample_len = %ld", (long) sample_len);
+    tmp[0] = sample_len;
+    tmp[1] = n;
+    tmp[2] = nderiv+1;
+
+    B_M_a = (PyArrayObject *) PyArray_SimpleNew(3, tmp, NPY_DOUBLE);
+    if(B_M_a == NULL)
+      return NULL;
+
+    DEBUG_MESS(2, "B_M_a = %p, strides = (%ld, %ld, %ld) size = (%ld, %ld, %ld)",
+               (void *) B_M_a,
+               (long) PyArray_STRIDE(B_M_a, 0), (long) PyArray_STRIDE(B_M_a, 1), (long) PyArray_STRIDE(B_M_a, 2),
+               (long) PyArray_DIM(B_M_a, 0), (long)  PyArray_DIM(B_M_a, 1), (long)  PyArray_DIM(B_M_a, 2)
+               );
+
+    for(i = 0; i < sample_len; ++i){
+      row_ptr = (double *) PyArray_GETPTR3(B_M_a, i, 0, 0);
+      B_v = gsl_matrix_view_array(row_ptr, n, nderiv+1);
+      x = gsl_vector_get(IN, i);
+
+      flag = gsl_bspline_deriv_eval(x, nderiv, &(B_v.matrix), self->w);
+      if (PyGSL_ERROR_FLAG(flag) != GSL_SUCCESS)
+        goto fail;
+    }
+    FUNC_MESS_END();
+    return (PyObject *) B_M_a;
+
+  fail:
+    /* Failed */
+    Py_XDECREF(B_M_a);
+    return NULL;
   }
 
 
@@ -397,10 +454,4 @@ struct pygsl_bspline
 
 
 };
-
-
-%init{
-     init_pygsl();
-} 
-
 
