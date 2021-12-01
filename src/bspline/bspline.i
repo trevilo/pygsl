@@ -341,6 +341,25 @@ struct pygsl_bspline
 
   }
 
+  double greville_abscissa(size_t i){
+    return gsl_bspline_greville_abscissa(i, self->w);
+  }
+
+  PyObject* greville_abscissa_vector(){
+    PyGSL_array_index_t i;
+    PyArrayObject *xg = NULL;
+    const size_t Ncoef = gsl_bspline_ncoeffs(self->w);
+    xg = PyGSL_New_Array(1, &Ncoef, NPY_DOUBLE);
+    double * xg_d = (double *) PyArray_DATA(xg);
+
+    for (i = 0; i < Ncoef; ++i) {
+      xg_d[i] = gsl_bspline_greville_abscissa(i, self->w);
+    }
+
+    return (PyObject *) xg;
+  }
+
+
 };
 
 
