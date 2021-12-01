@@ -3695,7 +3695,6 @@ SWIGINTERN gsl_error_flag_drop pygsl_bspline_knots(struct pygsl_bspline *self,Py
        int flag = GSL_EINVAL;
        
        FUNC_MESS_BEGIN();
-       //knots_a = PyGSL_vector_check(knots_o, self->w->knots->size, PyGSL_DARRAY_INPUT(1), &stride, NULL);
        knots_a = PyGSL_vector_check(knots_o, self->w->nbreak, PyGSL_DARRAY_INPUT(1), &stride, NULL);
        if(knots_a == NULL){
 	    flag =  GSL_EINVAL;
@@ -3711,7 +3710,7 @@ SWIGINTERN gsl_error_flag_drop pygsl_bspline_knots(struct pygsl_bspline *self,Py
        DEBUG_MESS(2, "sample_len = %ld", (long) sample_len);
        if(sample_len != self->w->nbreak){
 	    pygsl_error("Knots vector did not mach the number of break points!",
-			"src/bspline/bspline.i", 109 - 2, GSL_EBADLEN);
+			"src/bspline/bspline.i", 108 - 2, GSL_EBADLEN);
 	    return GSL_EBADLEN;
        }       
        flag =  gsl_bspline_knots(&(vec.vector), self->w);
@@ -3931,6 +3930,25 @@ SWIGINTERN PyObject *pygsl_bspline_eval_dep_yerr_vector(struct pygsl_bspline *se
     Py_XDECREF(yerr_a);
     return NULL;
 
+  }
+SWIGINTERN double pygsl_bspline_greville_abscissa(struct pygsl_bspline *self,size_t i){
+    return gsl_bspline_greville_abscissa(i, self->w);
+  }
+
+  #define SWIG_From_double   PyFloat_FromDouble 
+
+SWIGINTERN PyObject *pygsl_bspline_greville_abscissa_vector(struct pygsl_bspline *self){
+    PyGSL_array_index_t i;
+    PyArrayObject *xg = NULL;
+    const size_t Ncoef = gsl_bspline_ncoeffs(self->w);
+    xg = PyGSL_New_Array(1, &Ncoef, NPY_DOUBLE);
+    double * xg_d = (double *) PyArray_DATA(xg);
+
+    for (i = 0; i < Ncoef; ++i) {
+      xg_d[i] = gsl_bspline_greville_abscissa(i, self->w);
+    }
+
+    return (PyObject *) xg;
   }
 #ifdef __cplusplus
 extern "C" {
@@ -4621,6 +4639,61 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_bspline_greville_abscissa(PyObject *self, PyObject *args, PyObject *kwargs) {
+  PyObject *resultobj = 0;
+  struct pygsl_bspline *arg1 = (struct pygsl_bspline *) 0 ;
+  size_t arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  size_t val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj1 = 0 ;
+  char * kwnames[] = {
+    (char *)"i",  NULL 
+  };
+  double result;
+  
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:bspline_greville_abscissa", kwnames, &obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(self, &argp1,SWIGTYPE_p_pygsl_bspline, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "bspline_greville_abscissa" "', argument " "1"" of type '" "struct pygsl_bspline *""'"); 
+  }
+  arg1 = (struct pygsl_bspline *)(argp1);
+  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "bspline_greville_abscissa" "', argument " "2"" of type '" "size_t""'");
+  } 
+  arg2 = (size_t)(val2);
+  result = (double)pygsl_bspline_greville_abscissa(arg1,arg2);
+  resultobj = SWIG_From_double((double)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_bspline_greville_abscissa_vector(PyObject *self, PyObject *args) {
+  PyObject *resultobj = 0;
+  struct pygsl_bspline *arg1 = (struct pygsl_bspline *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject *swig_obj[1] ;
+  PyObject *result = 0 ;
+  
+  if (!SWIG_Python_UnpackTuple(args, "bspline_greville_abscissa_vector", 0, 0, 0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(self, &argp1,SWIGTYPE_p_pygsl_bspline, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "bspline_greville_abscissa_vector" "', argument " "1"" of type '" "struct pygsl_bspline *""'"); 
+  }
+  arg1 = (struct pygsl_bspline *)(argp1);
+  result = (PyObject *)pygsl_bspline_greville_abscissa_vector(arg1);
+  resultobj = result;
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGPY_DESTRUCTOR_CLOSURE(_wrap_delete_bspline) /* defines _wrap_delete_bspline_destructor_closure */
 
 static PyMethodDef SwigMethods[] = {
@@ -4682,6 +4755,8 @@ SWIGINTERN PyMethodDef SwigPyBuiltin__pygsl_bspline_methods[] = {
   { "eval_dep_vector", (PyCFunction)(void(*)(void))_wrap_bspline_eval_dep_vector, METH_VARARGS|METH_KEYWORDS, "eval_dep_vector(bspline self, gsl_vector const * X) -> PyObject *" },
   { "eval_dep_yerr", (PyCFunction)(void(*)(void))_wrap_bspline_eval_dep_yerr, METH_VARARGS|METH_KEYWORDS, "eval_dep_yerr(bspline self, double const x, double * OUT, double * OUT2) -> gsl_error_flag_drop" },
   { "eval_dep_yerr_vector", (PyCFunction)(void(*)(void))_wrap_bspline_eval_dep_yerr_vector, METH_VARARGS|METH_KEYWORDS, "eval_dep_yerr_vector(bspline self, gsl_vector const * X) -> PyObject *" },
+  { "greville_abscissa", (PyCFunction)(void(*)(void))_wrap_bspline_greville_abscissa, METH_VARARGS|METH_KEYWORDS, "greville_abscissa(bspline self, size_t i) -> double" },
+  { "greville_abscissa_vector", (PyCFunction)(void(*)(void))_wrap_bspline_greville_abscissa_vector, METH_VARARGS|METH_KEYWORDS, "greville_abscissa_vector(bspline self) -> PyObject *" },
   { NULL, NULL, 0, NULL } /* Sentinel */
 };
 
